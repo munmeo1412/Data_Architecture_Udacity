@@ -1,0 +1,297 @@
+USE DATABASE UDACITYPROJECT;
+
+USE SCHEMA ODS;
+
+
+------------- CREATE TABLES IN ODS ----------------------------
+DROP TABLE IF EXISTS LV_PRECIPITATION;
+CREATE TABLE LV_PRECIPITATION(
+    date date PRIMARY KEY,
+    precipitation float,
+    precipitation_normal float
+);
+
+DROP TABLE IF EXISTS LV_TEMP;
+CREATE TABLE LV_TEMP(
+    date date PRIMARY KEY,
+    "min" float,
+    "max" float, 
+    normal_min float, 
+    normal_max float
+);
+
+DROP TABLE IF EXISTS YELP_BUSINESS;
+CREATE TABLE YELP_BUSINESS (
+	business_id string PRIMARY KEY,
+    address string,
+    categories string,
+    city string,
+    hours object,
+    is_open string,
+    latitude float,
+    longitude float,
+    name string,
+    postal_code string, 
+    review_count number, 
+    stars number,
+    state string
+);
+
+
+DROP TABLE IF EXISTS YELP_USER;
+CREATE TABLE YELP_USER (
+  	user_id string PRIMARY KEY,
+	average_stars float,
+	compliment_cool number, 
+	compliment_cute number,
+	compliment_funny number,
+	compliment_hot number,
+	compliment_list number,
+	compliment_more number,
+	compliment_photos number,
+	compliment_plain number,
+	compliment_profile number,
+	compliment_writer number,
+	cool text,
+	elite string,
+	fans text,
+	friends string,
+	funny text,
+	name string,
+	review_count number,
+	useful number,
+	yelping_since timestamp
+);
+
+
+DROP TABLE IF EXISTS YELP_REVIEW;
+CREATE TABLE YELP_REVIEW (
+	review_id TEXT PRIMARY KEY,
+    business_id TEXT,
+    cool NUMBER, 
+    timestamp TIMESTAMP,
+    date date,
+    funny number,
+    stars number,
+    text TEXT,
+    useful number,
+    user_id TEXT,
+    FOREIGN KEY (business_id) REFERENCES YELP_BUSINESS(business_id),
+    FOREIGN KEY (date) REFERENCES LA_TEMP(date),
+    FOREIGN KEY (date) REFERENCES LA_PRECIPITATION(date),
+	FOREIGN KEY (user_id) REFERENCES YELP_USER(user_id)
+);
+
+
+
+DROP TABLE IF EXISTS YELP_CHECKIN;
+CREATE TABLE YELP_CHECKIN (
+    check_id number identity PRIMARY KEY,
+	business_id string,
+    date string,
+    FOREIGN KEY (business_id) REFERENCES YELP_BUSINESS(business_id)
+);
+
+
+
+
+DROP TABLE IF EXISTS YELP_TIP;
+CREATE TABLE YELP_TIP (
+    tip_id number identity PRIMARY KEY,
+	business_id string,
+    compliment_count number,
+    date timestamp,
+    text string,
+    user_id string,
+    FOREIGN KEY (business_id) REFERENCES YELP_BUSINESS(business_id),
+    FOREIGN KEY (user_id) REFERENCES YELP_USER(user_id)
+);
+
+
+
+DROP TABLE IF EXISTS YELP_COVID;
+CREATE TABLE YELP_COVID (
+	yelp_covid_id number IDENTITY PRIMARY KEY,
+	call_to_action_enabled boolean,
+	covid_banner string,
+	grubhub_enabled boolean, 
+	request_quote_enabled boolean,
+	temporary_closed_until string, 
+	virtual_services_offered string,
+	business_id string,
+	delivery_or_takeout boolean, 
+	highlights string,
+	FOREIGN KEY (business_id) REFERENCES YELP_BUSINESS(business_id)
+);
+
+
+
+DROP TABLE IF EXISTS YELP_BUSINESS_ATTR;
+CREATE TABLE YELP_BUSINESS_ATTR (
+	attribute_id number identity PRIMARY KEY,
+	business_id string,
+	alcohol TEXT,
+	bike_parking TEXT,
+	business_accepts_credit_cards TEXT,
+	good_for_dancing TEXT,
+	happy_hour TEXT,
+	has_TV TEXT,
+	noise_level TEXT,
+	outdoor_seating TEXT,
+	restaurants_good_for_groups TEXT,
+	restaurants_price_range TEXT,
+	restaurants_reservations TEXT,
+	wifi TEXT,
+	good_for_kids TEXT,
+	FOREIGN KEY (business_id) REFERENCES YELP_BUSINESS(business_id)
+);
+
+
+
+
+------------ Insert data into tables in ODS --------------
+
+INSERT INTO ODS.LV_TEMP
+SELECT
+    CONCAT(SUBSTR(date, 1, 4),'-',SUBSTR(date, 5, 2),'-',SUBSTR(date, 7, 2)) as date,
+    "min",
+    "max",
+    normal_min,
+    normal_max
+FROM STAGING.LV_TEMP;
+
+
+
+INSERT INTO ODS.LV_PRECIPITATION
+SELECT 
+    CONCAT(SUBSTR(date, 1, 4),'-',SUBSTR(date, 5, 2),'-',SUBSTR(date, 7, 2)) as date,
+    CASE WHEN precipitation = 'T' THEN 0 ELSE precipitation END as precipitation,
+    precipitation_normal
+FROM STAGING.LV_PRECIPITATION;
+
+
+
+INSERT INTO ODS.YELP_BUSINESS (business_id, state, address, categories,
+                              city, hours, is_open, latitude, longitude,
+                              name, postal_code, review_count, stars)
+SELECT 
+	replace(business: business_id, '"','') as business_id,
+	replace(business: state, '"','') as state,
+	replace(business: address, '"','') as address, 
+	replace(business: categories, '"','') as categories,
+	replace(business: city, '"','') as city,
+	business: hours as hours, 
+	business: is_open as is_open,
+	business: latitude as latitude,
+	business: longitude as longitude,
+	replace(business: name, '"','') as name, 
+	replace(business: postal_code, '"','') as postal_code,
+	business: review_count as review_count,
+	business: stars as stars 
+FROM STAGING.YELP_BUSINESS;
+
+
+
+INSERT INTO ODS.YELP_REVIEW(review_id, business_id, 
+      timestamp, date, funny, 
+      cool, stars, text, useful, user_id)
+SELECT 
+	replace(reviews: review_id, '"','') as review_id,
+	replace(reviews: business_id, '"','') as business_id, 
+	TO_TIMESTAMP(replace(reviews: date, '"','')) as timestamp,
+	date(reviews: date) as date,
+	reviews: funny as funny, 
+	reviews: cool as cool, 
+	reviews: stars as stars,
+	replace(reviews: text, '"','') as text,
+	reviews: useful as useful,
+	replace(reviews: user_id, '"','') as user_id
+FROM STAGING.YELP_REVIEW;
+
+
+
+INSERT INTO ODS.YELP_USER (user_id, average_stars, compliment_cute, compliment_funny, compliment_hot,
+                           compliment_list, compliment_more, compliment_photos, compliment_plain, 
+                           compliment_profile, compliment_writer, compliment_cool, elite, fans,
+                           friends, funny, name, review_count, useful, cool, yelping_since)
+SELECT 
+    replace(users: user_id, '"','') as user_id,
+    users: average_stars as average_stars, 
+    users: compliment_cute as compliment_cute, 
+    users: compliment_funny as compliment_funny,
+    users: compliment_hot as compliment_hot,
+    users: compliment_list as compliment_list,
+    users: compliment_more as compliment_more,
+    users: compliment_photos as compliment_photos,
+    users: compliment_plain as compliment_plain,
+    users: compliment_profile as compliment_profile,
+    users: compliment_writer as compliment_writer,
+    users: compliment_cool as compliment_cool,
+    replace(users: elite, '"','') as elite,
+    users: fans as fans,
+    replace(users: friends, '"','') as friends,
+    users: funny as funny,
+    replace(users: name, '"','') as name,
+    users: review_count as review_count,
+    users: useful as useful,
+    users: cool as cool,
+    TO_TIMESTAMP(replace(users: yelping_since, '"','')) as yelping_since
+FROM STAGING.YELP_USER;
+
+
+
+INSERT INTO ODS.YELP_CHECKIN (business_id, date)
+SELECT 
+    replace(checkin: business_id, '"','') as business_id, 
+    replace(checkin: date, '"','') as date
+FROM STAGING.YELP_CHECKIN;
+
+
+
+INSERT INTO ODS.YELP_TIP (business_id, compliment_count, date, text, user_id)
+SELECT 
+  replace(tips: business_id, '"','') as business_id, 
+  tips: compliment_count as compliment_count, 
+  TO_TIMESTAMP(replace(tips: date, '"','')) as date,
+  replace(tips: text, '"','') as text,
+  replace(tips: user_id, '"','') as user_id
+FROM STAGING.YELP_TIP;
+
+
+
+INSERT INTO ODS.YELP_COVID(call_to_action_enabled, covid_banner, grubhub_enabled, request_quote_enabled,
+                           temporary_closed_until, virtual_services_offered, business_id, delivery_or_takeout, highlights)
+SELECT 
+  CASE WHEN covid_features: "Call To Action enabled" = 'FALSE' THEN FALSE ELSE TRUE END as call_to_action_enabled, 
+  replace(covid_features: "Covid Banner", '"','') as covid_banner, 
+  CASE WHEN covid_features: "Grubhub enabled" = 'FALSE' THEN FALSE ELSE TRUE END as grubhub_enabled, 
+  CASE WHEN covid_features: "Request a Quote Enabled" = 'FALSE' THEN FALSE ELSE TRUE END as request_quote_enabled, 
+  replace(covid_features: "Temporary Closed Until", '"','') as temporary_closed_until,
+  replace(covid_features: "Virtual Services Offered", '"','') as virtual_services_offered,
+  replace(covid_features: "business_id", '"','') as business_id,
+  CASE WHEN covid_features: "delivery or takeout" = 'FALSE' THEN FALSE ELSE TRUE END as delivery_or_takeout,
+  replace(covid_features: "highlights", '"','') as highlights
+FROM STAGING.YELP_COVID_FEATURES;
+
+
+
+INSERT INTO ODS.YELP_BUSINESS_ATTR (business_id, alcohol, bike_parking, business_accepts_credit_cards, 
+                               good_for_dancing, happy_hour, has_TV, noise_level, 
+                               outdoor_seating, restaurants_good_for_groups, restaurants_price_range,
+                               restaurants_reservations, wifi, good_for_kids)
+SELECT 
+    replace(business: business_id, '"','') as business_id,
+    replace(business: attributes.Alcohol, '"','') as alcohol,
+    replace(business: attributes.BikeParking, '"','') as bike_parking,
+    replace(business: attributes.BusinessAcceptsCreditCards, '"','') as business_accepts_credit_cards,
+    replace(business: attributes.GoodForDancing, '"','') as good_for_dancing,
+    replace(business: attributes.HappyHour, '"','') as happy_hour,
+    replace(business: attributes.HasTV, '"','') as has_TV,
+    replace(business: attributes.NoiseLevel, '"','') as noise_level,
+    replace(business: attributes.OutdoorSeating, '"','') as outdoor_seating,
+    replace(business: attributes.RestaurantsGoodForGroups, '"','') as restaurants_good_for_groups,
+    replace(business: attributes.RestaurantsPriceRange2, '"','') as restaurants_price_range,
+    replace(business: attributes.RestaurantsReservations, '"','') as restaurants_reservations,
+    replace(business: attributes.WiFi, '"','') as wifi,
+    replace(business: attributes.GoodForKids, '"','') as good_for_kids
+FROM STAGING.YELP_BUSINESS;

@@ -1,0 +1,64 @@
+
+CREATE DATABASE UDACITYPROJECT;
+
+USE DATABASE UDACITYPROJECT;
+
+CREATE SCHEMA STAGING;
+CREATE SCHEMA ODS;
+CREATE SCHEMA DWH;
+
+USE SCHEMA STAGING;
+
+create or replace file format myjsonformat type='JSON' strip_outer_array=true;
+create or replace stage my_json_stage file_format = myjsonformat;
+
+
+
+CREATE TABLE yelp_review(reviews variant);
+CREATE TABLE yelp_user(users variant);
+CREATE TABLE yelp_checkin(checkin variant);
+CREATE TABLE yelp_tip(tips variant);
+CREATE TABLE yelp_business(business variant);
+CREATE TABLE yelp_covid_features(covid_features variant);
+
+put file://Users/MSIs/Documents/DataArchitect_Udacity/yelp_dataset/yelp_academic_dataset_review.json @my_json_stage auto_compress=true;
+put file://Users/MSIs/Documents/DataArchitect_Udacity/yelp_dataset/yelp_academic_dataset_user.json @my_json_stage auto_compress=true;
+put file://Users/MSIs/Documents/DataArchitect_Udacity/yelp_dataset/yelp_academic_dataset_business.json @my_json_stage auto_compress=true;
+put file://Users/MSIs/Documents/DataArchitect_Udacity/yelp_dataset/yelp_academic_dataset_tip.json @my_json_stage auto_compress=true;
+put file://Users/MSIs/Documents/DataArchitect_Udacity/yelp_dataset/yelp_academic_dataset_checkin.json @my_json_stage auto_compress=true;
+put file://Users/MSIs/Documents/DataArchitect_Udacity/yelp_dataset/yelp_academic_dataset_covid_features.json @my_json_stage auto_compress=true;
+
+copy into yelp_review from @my_json_stage/yelp_academic_dataset_review.json.gz file_format=myjsonformat on_error='skip_file';
+copy into yelp_user from @my_json_stage/yelp_academic_dataset_user.json.gz file_format=myjsonformat on_error='skip_file';
+copy into yelp_checkin from @my_json_stage/yelp_academic_dataset_checkin.json.gz file_format=myjsonformat on_error='skip_file';
+copy into yelp_tip from @my_json_stage/yelp_academic_dataset_tip.json.gz file_format=myjsonformat on_error='skip_file';
+copy into yelp_business from @my_json_stage/yelp_academic_dataset_business.json.gz file_format=myjsonformat on_error='skip_file';
+copy into yelp_covid_features from @my_json_stage/yelp_academic_dataset_covid_features.json.gz file_format=myjsonformat on_error='skip_file';
+
+select * from yelp_review LIMIT 5;
+select * from yelp_user LIMIT 5;
+select * from yelp_checkin LIMIT 5;
+select * from yelp_tip LIMIT 5;
+select * from yelp_business LIMIT 5;
+select * from yelp_covid_features LIMIT 5;
+
+
+
+create or replace TABLE LV_PRECIPITATION (
+	DATE STRING,
+	PRECIPITATION STRING,
+	PRECIPITATION_NORMAL FLOAT
+);
+
+create or replace LV_TEMP (
+	DATE STRING,
+	"min" FLOAT,
+	"max" FLOAT,
+	NORMAL_MIN FLOAT,
+	NORMAL_MAX FLOAT
+);
+
+---- Upload csv file directly in Snowflake UI
+
+select * from LV_PRECIPITATION LIMIT 5;
+select * from LV_TEMP LIMIT 5;

@@ -1,0 +1,130 @@
+USE DATABASE UDACITYPROJECT;
+
+USE SCHEMA DWH;
+
+
+------------- CREATE TABLES IN DWH ----------------------------
+
+CREATE TABLE DIM_DATE(
+    date DATE PRIMARY KEY,
+    day INT,
+    month INT,
+    quarter INT,
+    year INT,
+    day_of_week INT,
+	max_temperature FLOAT,
+	min_temperature FLOAT,
+	max_temperature_normal FLOAT,
+	min_temperature_normal FLOAT,
+	precipitation FLOAT,
+	precipitation_normal FLOAT,
+);
+	
+
+CREATE TABLE DIM_BUSINESS (
+    business_id STRING PRIMARY KEY,
+    name STRING,
+    address STRING,
+    categories STRING,    
+    city STRING,
+    is_open BOOLEAN,
+    latitude FLOAT,
+    longitude FLOAT,
+    postal_code STRING, 
+    state STRING
+  );  	
+  
+  
+
+CREATE TABLE DWH.DIM_USER (
+    user_id STRING PRIMARY KEY,
+    name STRING,
+    average_stars FLOAT,
+    yelping_since TIMESTAMP
+);
+
+
+
+CREATE TABLE DWH.FACT_REVIEWS (
+  business_id STRING,
+  review_id STRING,
+  user_id STRING,
+  date DATE,
+  timestamp TIMESTAMP,
+  stars INT,
+  text TEXT,
+  max_temperature FLOAT,
+  min_temperature FLOAT,
+  max_temperature_normal FLOAT,
+  min_temperature_normal FLOAT,
+  precipitation FLOAT,
+  precipitation_normal FLOAT,
+  PRIMARY KEY (business_id, review_id, timestamp),
+  FOREIGN KEY (user_id) REFERENCES DIM_USER(user_id),
+  FOREIGN KEY (business_id) REFERENCES DIM_BUSINESS(business_id),
+  FOREIGN KEY (date) REFERENCES DIM_DATE(date)
+);
+
+
+ -------------- INSERT DATA INTO TABLES IN DWH ---------------------
+ 
+INSERT INTO DWH.DIM_DATE(date, day, month, year, day_of_week, max_temperature, min_temperature, max_temperature_normal, min_temperature_normal, precipitation, precipitation_normal)
+SELECT 
+    lt.date AS date, 
+    EXTRACT('day', lt.date) as day, 
+    EXTRACT('month', lt.date) as month, 
+    EXTRACT('year', lt.date) as year,
+    EXTRACT('dayofweek',lt.date) as day_of_week,
+	lt."max" as max_temperature,
+	lt."min" as min_temperature,
+	lt.normal_max as max_temperature_normal,
+	lt.normal_min as min_temperature_normal,
+	lp.precipitation as precipitation,
+	lp.precipitation_normal as precipitation_normal
+FROM ODS.LV_TEMP as lt
+LEFT JOIN ODS.LV_PRECIPITATION AS lp
+	ON lt.date = lp.date;
+
+
+INSERT INTO DWH.DIM_USER (user_id, name, average_stars, yelping_since)
+SELECT DISTINCT 
+    user_id, 
+    name, 
+    average_stars, 
+    yelping_since
+FROM ODS.YELP_USER;
+
+
+INSERT INTO DWH.DIM_BUSINESS (business_id, name, address, categories, city, is_open, latitude, longitude, postal_code, state)
+SELECT DISTINCT 
+    business_id, 
+    name, 
+    address,
+    categories, 
+    city,
+    is_open,
+    latitude,
+    longitude,
+    postal_code,  
+    state
+FROM ODS.YELP_BUSINESS;
+
+
+INSERT INTO DWH.FACT_REVIEWS (review_id, business_id, user_id, date, timestamp, stars, text, max_temperature, min_temperature, max_temperature_normal, min_temperature_normal, precipitation, precipitation_normal)
+SELECT 
+  yr.review_id as review_id,
+  yr.business_id as business_id,
+  yr.user_id as user_id,
+  yr.date as date,
+  yr.timestamp as timestamp,
+  yr.stars as stars,
+  yr.text as text,
+  dd.max_temperature,
+  dd.min_temperature,
+  dd.max_temperature_normal,
+  dd.min_temperature_normal,
+  dd.precipitation,
+  dd.precipitation_normal
+FROM ODS.YELP_REVIEW AS yr
+LEFT JOIN DWH.DIM_DATE AS dd
+	ON yr.date = dd.date;

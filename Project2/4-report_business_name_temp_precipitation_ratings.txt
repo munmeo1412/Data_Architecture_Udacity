@@ -1,0 +1,32 @@
+
+------ Report number of user, number of reviews, temperature, precipitation, ratings by business name and date -------------
+SELECT 
+    db.name as business_name,
+    fr.date,
+    count(DISTINCT fr.user_id) AS num_unique_users, 
+    count(fr.review_id) as num_reviews,
+    (avg(fr.max_temperature)+avg(fr.min_temperature)/2) AS avg_temperature,
+    avg(fr.precipitation) AS avg_precipitation,
+    avg(fr.stars) AS avg_stars
+FROM DWH.FACT_REVIEWS fr
+LEFT JOIN DWH.DIM_BUSINESS db
+    ON fr.business_id = db.business_id
+GROUP BY 1, 2;
+
+
+------ Report number of user, number of reviews, temperature, precipitation, ratings by business name and year-month -------------
+
+SELECT 
+    db.name as business_name,
+    dd.year || '-' || (CASE WHEN dd.month <10 THEN '0' || CAST(dd.month AS STRING) ELSE CAST(dd.month AS STRING) END) as year_month,
+    count(DISTINCT fr.user_id) AS num_unique_users, 
+    count(fr.review_id) as num_reviews,
+    (avg(fr.max_temperature)+avg(fr.min_temperature)/2) AS avg_temperature,
+    avg(fr.precipitation) AS avg_precipitation,
+    avg(fr.stars) AS avg_stars
+FROM DWH.FACT_REVIEWS fr
+LEFT JOIN DWH.DIM_BUSINESS db
+    ON fr.business_id = db.business_id
+LEFT JOIN DWH.DIM_DATE dd
+    ON fr.date = dd.date    
+GROUP BY 1, 2;
